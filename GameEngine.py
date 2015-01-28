@@ -1,5 +1,5 @@
 from Display import Display
-from Form import AppBar, Menu, MapForm, TrucksForm
+from Form import AppBar, Menu, MapForm, TrucksForm, CityForm
 from City import City
 from Map import Map
 
@@ -14,16 +14,19 @@ class GameEngine:
         
     def initialize(self):
         self.cities = City.load()
+        self.cur_city = self.cities[0]
         self._map = Map(self.cities)
 
         fm_map = MapForm(self)
         fm_trucks = TrucksForm(self)
         fm_menu = Menu(self)
+        fm_city = CityForm(self)
         self.forms.append(fm_map)
         self.forms.append(fm_trucks)
         self.forms.append(fm_menu)
+        self.forms.append(fm_city)
 
-        self.current = 2
+        self.cur_form = 3
         self.focus = fm_menu.focus()
 
     def run(self):
@@ -31,7 +34,7 @@ class GameEngine:
         while True:
             #self.display.show()
             self.tabbar.show()
-            self.forms[self.current].show()
+            self.forms[self.cur_form].show()
             
             key_code = self.display.screen.getch()
             if self.focus.check_key(key_code):
@@ -48,7 +51,9 @@ class GameEngine:
             self.focus = self.tabbar.focus()
         else:
             if 'map' == new_focus:
-                self.current = 0
+                self.cur_form = 0
+            elif 'city' == new_focus:
+                self.cur_form = 3
 
-            self.focus = self.forms[self.current].focus()
+            self.focus = self.forms[self.cur_form].focus()
         

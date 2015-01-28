@@ -8,7 +8,7 @@ class City:
             City('Jinan', 540, 710, 2),
             City('Beijing', 600, 700, 1),
             City('Guangzhou', 220, 630, 1),
-            City('Tianjin', 595, 715, 1)
+            City('Tianjin', 590, 715, 1)
         ]
 
     def __init__(self, name, lat, lng, level):

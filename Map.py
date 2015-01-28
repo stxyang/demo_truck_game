@@ -27,7 +27,7 @@ class Map:
         lat, lng = pos
         center_lat, center_lng = self.center
         return (
-            (center_lat-lat)*27/self.zoom/48+13,
+            (center_lat-lat)*27/self.zoom/32+13,
             (lng-center_lng)*78/self.zoom/24+39
         )
             

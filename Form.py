@@ -48,7 +48,6 @@ class Form:
         return True
 
 
-
 class Menu(Form):
     def __init__(self, ge):
         Form.__init__(self, 27, 78)
@@ -174,7 +173,7 @@ class AppBar(Form):
         return True
 
     def on_enter_pressed(self):
-        self.ge.current = self.current
+        self.ge.cur_form = self.current
         self.ge.focus_to('')
         self.items[2].addstr(1, 3, "Exit")            
 
@@ -187,23 +186,68 @@ class MapForm(Form):
         self.pad.box()
 
         #self.pad.addch(4, 5, curses.ACS_DIAMOND)
-        self.pad.hline(4, 6, 0, 20)
-        self.pad.vline(4, 26, 0, 6)
-        self.pad.hline(9, 26, 0, 20)
-        self.pad.addch(4, 26, curses.ACS_URCORNER)
-        self.pad.addch(9, 26, curses.ACS_LLCORNER)
+        self.pad.hline(2, 6, 0, 20)
+        self.pad.addch(2, 26, curses.ACS_URCORNER)
+        self.pad.vline(3, 26, 0, 2)
+        self.pad.addch(4, 26, curses.ACS_LLCORNER)
+        self.pad.hline(4, 27, 0, 20)
+        self.pad.addch(4, 46, curses.ACS_URCORNER)
+        self.pad.vline(5, 46, 0, 4)
+        self.pad.addch(9, 46, curses.ACS_LLCORNER)
+        self.pad.hline(9, 47, 0, 27)
+        self.pad.addch(9, 74, curses.ACS_URCORNER)
+        self.pad.vline(10, 74, 0, 8)
         #self.pad.addch(9, 46, curses.ACS_DIAMOND)
+
+        self.current = 0
+        self.items = []
+        counter = 0
+        self.city_mapping = {}
+
+        for city in sorted(self._map.get_visible_cities(), key=lambda c:-c.pos[0]):
+            row, col = self._map.convert(city.pos)
+            win = self.pad.derwin(2, 9, row-2, col-5)
+            win.addch(1, 4, curses.ACS_DIAMOND)
+            win.addstr(0, 4-len(city.name)/2, city.name)
+            self.items.append(win)
+            if city is self.ge.cur_city:
+                self.current = counter
+            self.city_mapping[counter] = city
+            counter += 1
 
     def show(self):
 
-        self.pad.bkgd(curses.color_pair(1))
-        for city in self._map.get_visible_cities():
-            row, col = self._map.convert(city.pos)
-            #print "row: %d, col: %d name: %s" % (row, col, city.name)
-            self.pad.addch(row, col, curses.ACS_DIAMOND)
-            #self.pad.addstr(col-len(city.name)/2, row-1, city.name)
+        #self.pad.bkgd(curses.color_pair(1))
+        for i in range(len(self.items)):
+            win = self.items[i]
+            if self.current == i:
+                if self.focused():
+                    win.bkgd(curses.color_pair(1))
+                else:
+                    win.bkgd(curses.color_pair(3))
+            else:
+                win.bkgd(curses.color_pair(2))
 
         self.pad.refresh(0, 0, 4, 1, self.rows+4, self.cols+1)
+
+    def on_arrow_key_pressed(self, direction):
+        
+        if "UP" == direction:
+            if self.current > 0:
+                self.current -= 1
+            else:
+                self.ge.focus_to('tabbar')
+                return True
+        elif "DOWN" == direction:
+            if self.current != len(self.items)-1:
+                self.current += 1
+
+        return True
+
+    def on_enter_pressed(self):
+        self.ge.cur_city = self.city_mapping[self.current]
+        self.ge.focus_to('city')
+        return True
 
 class TrucksForm(Form):
 
@@ -232,6 +276,7 @@ class TrucksForm(Form):
                 self.items[i].bkgd(curses.color_pair(2))
 
         self.pad.refresh(0, 0, 4, 1, self.rows+4, self.cols+1)
+
     def on_arrow_key_pressed(self, direction):
         
         if "UP" == direction:
@@ -246,4 +291,58 @@ class TrucksForm(Form):
 
         return False
 
+class CityForm(Form):
+
+    def __init__(self, ge):
+        Form.__init__(self, 27, 78)
+        self.ge = ge
+
+        self.pad.box()
+
+        self.placename = self.pad.derwin(5, 52, 4, 14)
+        self.placename.box()
+
+        win = self.pad.derwin(14, 5, 8, 18)
+        win.box()
+        win = self.pad.derwin(14, 5, 8, 57)
+        win.box()
+
+        self.pad.addch(8, 18, curses.ACS_TTEE)
+        self.pad.addch(8, 22, curses.ACS_TTEE)
+        self.pad.addch(8, 57, curses.ACS_TTEE)
+        self.pad.addch(8, 61, curses.ACS_TTEE)
+
+        #self.pad.addch(9, 46, curses.ACS_DIAMOND)
+
+        self.buttons = []
+        count = 0
+        btn_height = 3
+        btn_width = 10
+        for key in ["Info", "Offers"]:
+            button = self.pad.derwin(
+                btn_height, btn_width,
+                23, 2+(count % 3) * (btn_width + 1)
+            )
+            button.box()
+            button.addstr(1, 5-len(key)/2, key)
+            self.buttons.append(button)
+            count += 1
+                
+
+    def show(self):
         
+        self.placename.addstr(2, 1, ' ' * 50)
+        self.placename.addstr(2, 26-len(self.ge.cur_city.name)/2, self.ge.cur_city.name)
+        self.pad.refresh(0, 0, 4, 1, self.rows+4, self.cols+1)
+
+    def on_arrow_key_pressed(self, direction):
+        
+        if "UP" == direction:
+            self.ge.focus_to('tabbar')
+            return True
+        return True
+
+    def on_enter_pressed(self):
+        return True
+
+   
