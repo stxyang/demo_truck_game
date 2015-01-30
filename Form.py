@@ -249,48 +249,6 @@ class MapForm(Form):
         self.ge.focus_to('city')
         return True
 
-class TrucksForm(Form):
-
-    def __init__(self, ge):
-        Form.__init__(self, 27, 78)
-        self.ge = ge
-        self.pad.box()
-
-        self.items = []
-        self.current = 0
-        for i in range(5):
-            item = self.pad.derwin(3, 72, 1+i*3, 3)
-            item.box()
-            item.addstr(1, 2, "Truck %d" % i)
-            self.items.append(item)
-
-    def show(self):
-
-        for i in range(len(self.items)):
-            if self.current == i:
-                if self.focused():
-                    self.items[i].bkgd(curses.color_pair(1))
-                else:
-                    self.items[i].bkgd(curses.color_pair(3))
-            else:
-                self.items[i].bkgd(curses.color_pair(2))
-
-        self.pad.refresh(0, 0, 4, 1, self.rows+4, self.cols+1)
-
-    def on_arrow_key_pressed(self, direction):
-        
-        if "UP" == direction:
-            if self.current > 0:
-                self.current -= 1
-            else:
-                self.ge.focus_to('tabbar')
-                return True
-        elif "DOWN" == direction:
-            if self.current != len(self.items)-1:
-                self.current += 1
-
-        return False
-
 class CityForm(Form):
 
     def __init__(self, ge):
@@ -315,6 +273,7 @@ class CityForm(Form):
         #self.pad.addch(9, 46, curses.ACS_DIAMOND)
 
         self.buttons = []
+        self.current = 0
         count = 0
         btn_height = 3
         btn_width = 10
@@ -333,16 +292,163 @@ class CityForm(Form):
         
         self.placename.addstr(2, 1, ' ' * 50)
         self.placename.addstr(2, 26-len(self.ge.cur_city.name)/2, self.ge.cur_city.name)
+
+        for i in range(len(self.buttons)):
+            if i == self.current:
+                if self.focused():
+                    self.buttons[i].bkgd(curses.color_pair(1))
+                else:
+                    self.buttons[i].bkgd(curses.color_pair(3))
+            else:
+                self.buttons[i].bkgd(curses.color_pair(2))
+
+        self.pad.refresh(0, 0, 4, 1, self.rows+4, self.cols+1)
+
+    def on_arrow_key_pressed(self, direction):
+        
+        new_pos = self.current
+        if "UP" == direction:
+            self.ge.focus_to('tabbar')
+            return True
+        elif "LEFT" == direction:
+            new_pos -= 1
+        elif "RIGHT" == direction:
+            new_pos += 1
+
+        if new_pos < 0:
+            self.current = 0
+        elif new_pos > len(self.buttons)-1:
+            self.current = len(self.buttons)-1
+        else:
+            self.current = new_pos
+
+        return True
+
+    def on_enter_pressed(self):
+        
+        if 1 == self.current:
+            self.ge.focus_to('cargolist')
+        return True
+
+
+class List(Form):
+
+    def __init__(self, ge, fields, items):
+        Form.__init__(self, 27, 78)
+
+        self.ge = ge
+
+        self.pad.box()
+        self.items = []
+        self.fields = fields
+        self.list_items = []
+        self.current = 0
+
+        self.header = self.new_line(1, 3)
+        #self.header.box()
+        for field in self.fields:
+            self.header.addstr(1, 2+field[0], field[1])
+
+        #self.update(items)
+
+    def new_line(self, top, left):
+        line_height = 3
+        line_width = 72
+        return self.pad.derwin(line_height, line_width, top, left)
+
+    def update(self):
+        
+        if len(self.list_items) > 0:
+            for listitem in self.list_items:
+                listitem.clear()
+        self.list_items = []
+
+    def show(self):
+
+        for i in range(len(self.list_items)):
+            if self.current == i:
+                if self.focused():
+                    self.list_items[i].bkgd(curses.color_pair(1))
+                else:
+                    self.list_items[i].bkgd(curses.color_pair(3))
+            else:
+                self.list_items[i].bkgd(curses.color_pair(2))
+
         self.pad.refresh(0, 0, 4, 1, self.rows+4, self.cols+1)
 
     def on_arrow_key_pressed(self, direction):
         
         if "UP" == direction:
-            self.ge.focus_to('tabbar')
-            return True
-        return True
+            if self.current > 0:
+                self.current -= 1
+            else:
+                self.ge.focus_to('tabbar')
+                return True
+        elif "DOWN" == direction:
+            if self.current < len(self.list_items)-1:
+                self.current += 1
 
-    def on_enter_pressed(self):
-        return True
+        return False
 
-   
+
+class TruckList(List):
+
+    def __init__(self, ge, trucks):
+
+        List.__init__(self, ge, [
+            [0, 'name'],
+            [15, 'destination'],
+            [32, 'status']
+        ], trucks)
+
+    def update(self):
+        List.update(self)
+        self.items = self.ge.trucks
+
+        for i in range(len(self.items)):
+            listitem = self.new_line(4+i*3, 3)
+            listitem.box()
+            item = self.items[i]
+            arr = [item.name, item.dest(), item.status()]
+
+            for j in range(len(self.fields)):
+                field = self.fields[j]
+                listitem.addstr(1, 2+field[0], arr[j])
+            self.list_items.append(listitem)
+
+    def focus(self):
+        Form.focus(self)
+
+        self.update()
+        return self
+
+class CargoList(List):
+    
+    def __init__(self, ge, cargos):
+        
+        List.__init__(self, ge, [
+            [0, 'Dest.'],
+            [16, 'Item'],
+            [40, 'Payment']
+        ], cargos)
+                      
+    def update(self):
+        List.update(self)
+        self.items = self.ge.cur_city.cargos
+
+        for i in range(len(self.items)):
+            listitem = self.new_line(4+i*3, 3)
+            listitem.box()
+            item = self.items[i]
+            arr = [item.dest, item.name, '200']
+
+            for j in range(len(self.fields)):
+                field = self.fields[j]
+                listitem.addstr(1, 2+field[0], arr[j])
+            self.list_items.append(listitem)
+
+    def focus(self):
+        Form.focus(self)
+
+        self.update()
+        return self

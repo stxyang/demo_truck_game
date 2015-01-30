@@ -15,3 +15,12 @@ class City:
         self.name = name
         self.pos = (lat, lng)
         self.level = level
+        self.stack = []
+        self.cargos = []
+        self.trucks = []
+
+        self.stack_limit = self.level * 5
+
+    def add_cargo(self, cargos):
+        self.cargos = sorted(self.cargos + cargos, key=lambda c:c.dest)
+
