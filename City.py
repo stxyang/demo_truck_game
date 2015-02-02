@@ -4,7 +4,7 @@ class City:
     @staticmethod
     def load():
         return [
-            City('Qindao', 525, 740, 2),
+            City('Qingdao', 525, 740, 2),
             City('Jinan', 540, 710, 2),
             City('Beijing', 600, 700, 1),
             City('Guangzhou', 220, 630, 1),
@@ -21,6 +21,10 @@ class City:
 
         self.stack_limit = self.level * 5
 
-    def add_cargo(self, cargos):
+    def add_cargos(self, cargos):
         self.cargos = sorted(self.cargos + cargos, key=lambda c:c.dest)
+
+    def remove_cargo(self, cargo):
+        self.cargos.remove(cargo)
+
 

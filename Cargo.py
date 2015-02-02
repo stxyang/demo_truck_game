@@ -2,23 +2,16 @@ import random
 
 class Cargo:
 
-    def __init__(self, name, src_city, dest_city):
-        self.name = name
-        self.src = src_city
-        self.dest = dest_city
-    
-
-class CargoGenerator:
-    
-    namelist = [
-        "Apples", "Atom Clock", "Album", "Ancient Vases",
-        "Bananas", "Bacon", "Beans", "Boat Parts",
-        "Cabin", "CD Player", "Chairs", "Coal",
-        "Desks", "Diamond", "Duck", "Documents"
-    ]
-
     @staticmethod
-    def get_cargo(city, cities, num):
+    def generate(city, cities, num):
+    
+        namelist = [
+            "Apples", "Atom Clock", "Album", "Ancient Vases",
+            "Bananas", "Bacon", "Beans", "Boat Parts",
+            "Cabin", "CD Player", "Chairs", "Coal",
+            "Desks", "Diamond", "Duck", "Documents"
+        ]
+
         ret = []
         i = 0
         
@@ -29,7 +22,7 @@ class CargoGenerator:
             if dest_city.name == city.name: 
                 continue
             ret.append(Cargo(
-                CargoGenerator.namelist[random.randint(0, len(CargoGenerator.namelist)-1)],
+                namelist[random.randint(0, len(namelist)-1)],
                 city.name,
                 dest_city.name
             ))
@@ -37,5 +30,12 @@ class CargoGenerator:
 
         return ret
         
+    def __init__(self, name, src_city, dest_city):
+        self.name = name
+        self.src = src_city
+        self.dest = dest_city
+        self.status = ''
+        self.uid = random.randint(3000000, 7999999)
+
 
     

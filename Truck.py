@@ -21,9 +21,10 @@ class Truck:
     def carry(self, cargo):
         
         if len(self.cargos) >= self.capacity:
-            return
-
+            return False
+        cargo.status = 'LOADED'        
         self.cargos.append(cargo)
+        return True
 
     def dump(self, cargo):
 
@@ -45,3 +46,8 @@ class Truck:
             return self.route[-1]
         else:
             return self.location
+
+    def in_city(self, city):
+        if self.status() != "ON THE WAY":
+            return self.location == city.name
+        return False

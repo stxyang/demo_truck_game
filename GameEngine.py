@@ -3,7 +3,7 @@ from Form import AppBar, Menu, MapForm, TruckList, CityForm, CargoList
 from City import City
 from Map import Map
 from Truck import Truck
-from Cargo import CargoGenerator
+from Cargo import Cargo
 
 class GameEngine:
 
@@ -21,13 +21,13 @@ class GameEngine:
         ## opend cities
         self.accessible_cities = self.cities
         for city in self.cities:
-            city.add_cargo(CargoGenerator.get_cargo(city, self.cities, 5))
+            city.add_cargos(Cargo.generate(city, self.cities, 5))
 
         ## owned trucks
         self.trucks = Truck.load()
 
         self.cur_city = self.cities[0]
-        self.cur_truck = self.trucks[0]
+        self.cur_truck = None
         self._map = Map(self.cities)
 
         fm_map = MapForm(self)
@@ -74,3 +74,20 @@ class GameEngine:
 
             self.focus = self.forms[self.cur_form].focus()
         
+    def get_current_truck(self):
+
+        for truck in self.trucks:
+            if truck.status() == "ON THE WAY":
+                continue
+            if truck.location == self.cur_city.name:
+                return truck
+        return None
+
+    def move_to_city(self, city_name):
+        
+        for city in self.cities:
+            if city.name == city_name:
+                self.cur_city = city
+                break
+
+            

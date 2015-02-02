@@ -207,8 +207,10 @@ class MapForm(Form):
         for city in sorted(self._map.get_visible_cities(), key=lambda c:-c.pos[0]):
             row, col = self._map.convert(city.pos)
             win = self.pad.derwin(2, 9, row-2, col-5)
-            win.addch(1, 4, curses.ACS_DIAMOND)
+            win.addch(1, 4, curses.ACS_CKBOARD)
             win.addstr(0, 4-len(city.name)/2, city.name)
+            if city == self.ge.cur_city:
+                win.addch(1, 4, curses.ACS_DIAMOND)
             self.items.append(win)
             if city is self.ge.cur_city:
                 self.current = counter
@@ -270,6 +272,8 @@ class CityForm(Form):
         self.pad.addch(8, 57, curses.ACS_TTEE)
         self.pad.addch(8, 61, curses.ACS_TTEE)
 
+        self.truck_win = self.pad.derwin(12, 32, 10, 24)
+        self.truck_win.box()
         #self.pad.addch(9, 46, curses.ACS_DIAMOND)
 
         self.buttons = []
@@ -285,13 +289,36 @@ class CityForm(Form):
             button.box()
             button.addstr(1, 5-len(key)/2, key)
             self.buttons.append(button)
-            count += 1
-                
+            count += 1               
 
-    def show(self):
-        
+    def get_city_truck(self):
+        if self.ge.cur_truck and self.ge.cur_truck.in_city(self.ge.cur_city):
+            truck = self.ge.cur_truck
+        else:
+            truck = self.ge.get_current_truck()
+            self.ge.cur_truck = truck
+        return truck
+
+    def focus(self):
+
         self.placename.addstr(2, 1, ' ' * 50)
         self.placename.addstr(2, 26-len(self.ge.cur_city.name)/2, self.ge.cur_city.name)
+
+        self.truck_win.clear()
+
+        truck = self.get_city_truck()
+        if truck is not None:
+            self.truck_win.addstr(2, 2, truck.name)
+            self.truck_win.addstr( 5, 6, "     +---+           ")
+            self.truck_win.addstr( 6, 6, "    /    |           ")
+            self.truck_win.addstr( 7, 6, "+--+----=+===========")
+            self.truck_win.addstr( 8, 6, "0> |_    |      _   |")
+            self.truck_win.addstr( 9, 6, "+=((*))=======((*))==")
+            self.truck_win.addstr(10, 6, "    -           -    ")
+
+        return Form.focus(self)
+
+    def show(self):
 
         for i in range(len(self.buttons)):
             if i == self.current:
@@ -422,6 +449,14 @@ class TruckList(List):
         self.update()
         return self
 
+    def on_enter_pressed(self):
+        truck = self.items[self.current]
+        self.ge.cur_truck = truck
+        if truck.status() != "ON THE WAY":
+            self.ge.move_to_city(truck.location)
+            self.ge.focus_to('city')
+    
+
 class CargoList(List):
     
     def __init__(self, ge, cargos):
@@ -429,26 +464,62 @@ class CargoList(List):
         List.__init__(self, ge, [
             [0, 'Dest.'],
             [16, 'Item'],
-            [40, 'Payment']
+            [40, 'Payment'],
+            [54, 'Status']
         ], cargos)
+        self.city = None
+        self.truck = None
                       
-    def update(self):
+    def update(self, city, truck):
         List.update(self)
-        self.items = self.ge.cur_city.cargos
+        self.city, self.truck = (city, truck)
+        self.items = self.city.cargos
+        if self.truck is not None:
+            self.items = sorted(self.items + self.truck.cargos, key=lambda c:(c.dest, c.name, c.uid))
 
         for i in range(len(self.items)):
             listitem = self.new_line(4+i*3, 3)
             listitem.box()
             item = self.items[i]
-            arr = [item.dest, item.name, '200']
+            arr = [item.dest, item.name, '200', item.status]
 
             for j in range(len(self.fields)):
                 field = self.fields[j]
                 listitem.addstr(1, 2+field[0], arr[j])
             self.list_items.append(listitem)
 
+        button = self.new_line(4+i*3+3, 3)
+        if len(self.truck.cargos) > 0:
+            button.box()
+            button.addstr(1, 10, 'GO')
+            self.list_items.append(button)
+        else:
+            button.clear()
+            
+
     def focus(self):
         Form.focus(self)
 
-        self.update()
+        self.update(self.ge.cur_city, self.ge.cur_truck)
         return self
+
+    def on_enter_pressed(self):
+        if self.truck is None:
+            return
+
+        if self.current == len(self.items):
+            self.ge.focus_to('map')
+        else:
+            cargo = self.items[self.current]
+            if cargo.status == 'LOADED':
+                if cargo.src == self.city.name:
+                    cargo.status = ''
+                else:
+                    cargo.status = 'STACKED'
+                    self.truck.dump(cargo)
+                    self.city.add_cargos([cargo])
+            elif cargo.status == 'STACKED' or cargo.status == '':
+                if self.truck.carry(cargo):
+                    self.city.remove_cargo(cargo)
+
+        self.ge.focus_to('')
