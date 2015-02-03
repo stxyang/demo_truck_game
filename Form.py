@@ -115,6 +115,17 @@ class Menu(Form):
 
         return True
 
+class StatusBar(Form):
+    def __init__(self, ge):
+        Form.__init__(self, 3, 24)
+        self.ge = ge
+
+    def show(self):
+        self.pad.clear()
+        self.pad.addstr(1, 1, 'Fund: %6d' % self.ge.fund)
+        self.pad.refresh(0, 0, 1, 64, 3, 78)
+
+    
 class AppBar(Form):
     def __init__(self, ge):
         Form.__init__(self, 3, 32)
@@ -147,7 +158,7 @@ class AppBar(Form):
             else:
                 self.items[i].bkgd(curses.color_pair(2))
 
-        self.pad.refresh(0, 0, 1, 47, 3, 80)
+        self.pad.refresh(0, 0, 1, 1, 3, 32)
 
     def on_arrow_key_pressed(self, direction):
 
@@ -177,6 +188,7 @@ class AppBar(Form):
         self.ge.focus_to('')
         self.items[2].addstr(1, 3, "Exit")            
 
+
 class MapForm(Form):
 
     def __init__(self, ge):
@@ -199,12 +211,17 @@ class MapForm(Form):
         self.pad.vline(10, 74, 0, 8)
         #self.pad.addch(9, 46, curses.ACS_DIAMOND)
 
+        self.mode = 'VIEW'
+
+        self.cities = sorted(self._map.get_visible_cities(), key=lambda c:-c.pos[0])
+
+    def update(self):
+
         self.current = 0
         self.items = []
-        counter = 0
         self.city_mapping = {}
-
-        for city in sorted(self._map.get_visible_cities(), key=lambda c:-c.pos[0]):
+        counter = 0
+        for city in self.cities:
             row, col = self._map.convert(city.pos)
             win = self.pad.derwin(2, 9, row-2, col-5)
             win.addch(1, 4, curses.ACS_CKBOARD)
@@ -216,7 +233,11 @@ class MapForm(Form):
                 self.current = counter
             self.city_mapping[counter] = city
             counter += 1
-
+        
+    def focus(self):
+        self.update()
+        return Form.focus(self)
+        
     def show(self):
 
         #self.pad.bkgd(curses.color_pair(1))
@@ -247,9 +268,23 @@ class MapForm(Form):
         return True
 
     def on_enter_pressed(self):
-        self.ge.cur_city = self.city_mapping[self.current]
-        self.ge.focus_to('city')
+
+        if self.mode == 'VIEW':
+            self.ge.cur_city = self.current_city()
+            self.ge.focus_to('city')
+        else:
+            self.ge.cur_truck.add_course(self.current_city())
+            self.ge.cur_truck.kick_off()
+
+            self.ge.truck_arrived(self.ge.cur_truck, self.ge.get_city_by_name(self.ge.cur_truck.location))
+
+            self.ge.focus_to('city')
+            self.mode = 'VIEW'
         return True
+
+    def current_city(self):
+        return self.city_mapping[self.current]
+
 
 class CityForm(Form):
 
@@ -308,7 +343,7 @@ class CityForm(Form):
 
         truck = self.get_city_truck()
         if truck is not None:
-            self.truck_win.addstr(2, 2, truck.name)
+            self.truck_win.addstr(2, 2, '%s (%d/%d)' %(truck.name, len(truck.cargos), truck.capacity))
             self.truck_win.addstr( 5, 6, "     +---+           ")
             self.truck_win.addstr( 6, 6, "    /    |           ")
             self.truck_win.addstr( 7, 6, "+--+----=+===========")
@@ -357,169 +392,3 @@ class CityForm(Form):
             self.ge.focus_to('cargolist')
         return True
 
-
-class List(Form):
-
-    def __init__(self, ge, fields, items):
-        Form.__init__(self, 27, 78)
-
-        self.ge = ge
-
-        self.pad.box()
-        self.items = []
-        self.fields = fields
-        self.list_items = []
-        self.current = 0
-
-        self.header = self.new_line(1, 3)
-        #self.header.box()
-        for field in self.fields:
-            self.header.addstr(1, 2+field[0], field[1])
-
-        #self.update(items)
-
-    def new_line(self, top, left):
-        line_height = 3
-        line_width = 72
-        return self.pad.derwin(line_height, line_width, top, left)
-
-    def update(self):
-        
-        if len(self.list_items) > 0:
-            for listitem in self.list_items:
-                listitem.clear()
-        self.list_items = []
-
-    def show(self):
-
-        for i in range(len(self.list_items)):
-            if self.current == i:
-                if self.focused():
-                    self.list_items[i].bkgd(curses.color_pair(1))
-                else:
-                    self.list_items[i].bkgd(curses.color_pair(3))
-            else:
-                self.list_items[i].bkgd(curses.color_pair(2))
-
-        self.pad.refresh(0, 0, 4, 1, self.rows+4, self.cols+1)
-
-    def on_arrow_key_pressed(self, direction):
-        
-        if "UP" == direction:
-            if self.current > 0:
-                self.current -= 1
-            else:
-                self.ge.focus_to('tabbar')
-                return True
-        elif "DOWN" == direction:
-            if self.current < len(self.list_items)-1:
-                self.current += 1
-
-        return False
-
-
-class TruckList(List):
-
-    def __init__(self, ge, trucks):
-
-        List.__init__(self, ge, [
-            [0, 'name'],
-            [15, 'destination'],
-            [32, 'status']
-        ], trucks)
-
-    def update(self):
-        List.update(self)
-        self.items = self.ge.trucks
-
-        for i in range(len(self.items)):
-            listitem = self.new_line(4+i*3, 3)
-            listitem.box()
-            item = self.items[i]
-            arr = [item.name, item.dest(), item.status()]
-
-            for j in range(len(self.fields)):
-                field = self.fields[j]
-                listitem.addstr(1, 2+field[0], arr[j])
-            self.list_items.append(listitem)
-
-    def focus(self):
-        Form.focus(self)
-
-        self.update()
-        return self
-
-    def on_enter_pressed(self):
-        truck = self.items[self.current]
-        self.ge.cur_truck = truck
-        if truck.status() != "ON THE WAY":
-            self.ge.move_to_city(truck.location)
-            self.ge.focus_to('city')
-    
-
-class CargoList(List):
-    
-    def __init__(self, ge, cargos):
-        
-        List.__init__(self, ge, [
-            [0, 'Dest.'],
-            [16, 'Item'],
-            [40, 'Payment'],
-            [54, 'Status']
-        ], cargos)
-        self.city = None
-        self.truck = None
-                      
-    def update(self, city, truck):
-        List.update(self)
-        self.city, self.truck = (city, truck)
-        self.items = self.city.cargos
-        if self.truck is not None:
-            self.items = sorted(self.items + self.truck.cargos, key=lambda c:(c.dest, c.name, c.uid))
-
-        for i in range(len(self.items)):
-            listitem = self.new_line(4+i*3, 3)
-            listitem.box()
-            item = self.items[i]
-            arr = [item.dest, item.name, '200', item.status]
-
-            for j in range(len(self.fields)):
-                field = self.fields[j]
-                listitem.addstr(1, 2+field[0], arr[j])
-            self.list_items.append(listitem)
-
-        button = self.new_line(4+i*3+3, 3)
-        if len(self.truck.cargos) > 0:
-            button.box()
-            button.addstr(1, 10, 'GO')
-            self.list_items.append(button)
-        else:
-            button.clear()
-            
-
-    def focus(self):
-        Form.focus(self)
-
-        self.update(self.ge.cur_city, self.ge.cur_truck)
-        return self
-
-    def on_enter_pressed(self):
-        if self.truck is None:
-            return
-
-        if self.current == len(self.items):
-            self.ge.focus_to('map')
-        else:
-            cargo = self.items[self.current]
-            if cargo.status == 'LOADED':
-                if cargo.src == self.city.name:
-                    cargo.status = ''
-                else:
-                    cargo.status = 'STACKED'
-                    self.truck.dump(cargo)
-                    self.city.add_cargos([cargo])
-            elif cargo.status == 'STACKED' or cargo.status == '':
-                if self.truck.carry(cargo):
-                    self.city.remove_cargo(cargo)
-
-        self.ge.focus_to('')

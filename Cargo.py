@@ -35,6 +35,7 @@ class Cargo:
         self.src = src_city
         self.dest = dest_city
         self.status = ''
+        self.profit = random.randint(1,5)*100
         self.uid = random.randint(3000000, 7999999)
 
 

@@ -1,5 +1,6 @@
 from Display import Display
-from Form import AppBar, Menu, MapForm, TruckList, CityForm, CargoList
+from Form import AppBar, StatusBar, Menu, MapForm, CityForm
+from List import TruckList, CargoList
 from City import City
 from Map import Map
 from Truck import Truck
@@ -12,7 +13,9 @@ class GameEngine:
         self.display = display
 
         self.forms = []
+        self.statusbar = StatusBar(self)
         self.tabbar = AppBar(self)
+        self.fund = 0
         
     def initialize(self):
         ## all cities
@@ -48,6 +51,7 @@ class GameEngine:
 
         while True:
             #self.display.show()
+            self.statusbar.show()
             self.tabbar.show()
             self.forms[self.cur_form].show()
             
@@ -83,11 +87,22 @@ class GameEngine:
                 return truck
         return None
 
-    def move_to_city(self, city_name):
-        
+    def get_city_by_name(self, city_name):
         for city in self.cities:
             if city.name == city_name:
-                self.cur_city = city
-                break
+                return city
+        return None
 
-            
+    def move_to_city(self, city_name):
+        self.cur_city = self.get_city_by_name(city_name)
+
+    def truck_arrived(self, truck, city):
+        
+        arrived_cargos = []
+        for cargo in truck.cargos:
+            if cargo.dest == city.name:
+                arrived_cargos.append(cargo)
+                self.fund += cargo.profit
+
+        for cargo in arrived_cargos:
+            truck.dump(cargo)
