@@ -274,12 +274,12 @@ class MapForm(Form):
             self.ge.focus_to('city')
         else:
             self.ge.cur_truck.add_course(self.current_city())
-            self.ge.cur_truck.kick_off()
+            #self.ge.cur_truck.kick_off()
 
-            self.ge.truck_arrived(self.ge.cur_truck, self.ge.get_city_by_name(self.ge.cur_truck.location))
+#            self.ge.truck_arrived(self.ge.cur_truck, self.ge.get_city_by_name(self.ge.cur_truck.location))
 
-            self.ge.focus_to('city')
             self.mode = 'VIEW'
+            self.ge.focus_to('wild')
         return True
 
     def current_city(self):
@@ -344,11 +344,11 @@ class CityForm(Form):
         truck = self.get_city_truck()
         if truck is not None:
             self.truck_win.addstr(2, 2, '%s (%d/%d)' %(truck.name, len(truck.cargos), truck.capacity))
-            self.truck_win.addstr( 5, 6, "     +---+           ")
-            self.truck_win.addstr( 6, 6, "    /    |           ")
-            self.truck_win.addstr( 7, 6, "+--+----=+===========")
+            self.truck_win.addstr( 5, 6, "     +---+ +---+     ")
+            self.truck_win.addstr( 6, 6, "    / (\")| |   |     ")
+            self.truck_win.addstr( 7, 6, "+--+----=+-+---+----+")
             self.truck_win.addstr( 8, 6, "0> |_    |      _   |")
-            self.truck_win.addstr( 9, 6, "+=((*))=======((*))==")
+            self.truck_win.addstr( 9, 6, "+=((*))=======((*))=+")
             self.truck_win.addstr(10, 6, "    -           -    ")
 
         return Form.focus(self)
@@ -391,4 +391,45 @@ class CityForm(Form):
         if 1 == self.current:
             self.ge.focus_to('cargolist')
         return True
+
+
+class WildForm(Form):
+
+    def __init__(self, ge):
+        Form.__init__(self, 27, 78)
+        self.ge = ge
+
+        self.pad.box()
+
+        self.pad.hline(21, 4, 0, 70)
+
+        self.truck_win = self.pad.derwin(12, 32, 10, 24)
+        self.truck_win.box()
+        #self.pad.addch(9, 46, curses.ACS_DIAMOND)
+
+    def focus(self):
+
+        self.truck_win.clear()
+
+        truck = self.ge.cur_truck
+        if truck is not None:
+            if len(truck.route) > 0:
+                title = '%s - %d/%d, %s km to %s' %(truck.name, len(truck.cargos), truck.capacity, truck.course, truck.route[0])
+                self.pad.addstr(1, 39-len(title)/2, title)
+                self.truck_win.addstr( 6, 6, "     +---+ +---+     ")
+                self.truck_win.addstr( 7, 6, "    / (\")| |   |     ")
+                self.truck_win.addstr( 8, 6, "+--+----=+-+---+----+")
+                self.truck_win.addstr( 9, 6, "0> |_    |      _   |")
+                self.truck_win.addstr(10, 6, "+=((*))=======((*))=+")
+                self.truck_win.hline(11, 0, 0, 32)
+                return Form.focus(self)
+            else:
+                self.ge.move_to_city(truck.location)
+
+        self.ge.focus_to('city')
+        return self.ge.forms[3]
+                
+    def show(self):
+
+        self.pad.refresh(0, 0, 4, 1, self.rows+4, self.cols+1)
 

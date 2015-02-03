@@ -54,12 +54,19 @@ class Truck:
 
     def add_course(self, city):
         self.route.append(city.name)
+        self.course = 10
 
+    def remove_course(self):
+        self.location = self.route[0]
+        self.route.remove(self.route[0])
+        if len(self.route) > 0:
+            self.course = 10
+        
     def kick_off(self):
         if len(self.route) == 0:
             return
-        self.location = self.route[0]
-        self.route.remove(self.route[0])
+        #self.location = self.route[0]
+        #self.route.remove(self.route[0])
 
 
 

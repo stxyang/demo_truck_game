@@ -112,10 +112,11 @@ class TruckList(List):
     def on_enter_pressed(self):
         truck = self.items[self.current]
         self.ge.cur_truck = truck
-        if truck.status() != "ON THE WAY":
+        if truck.status() == "ON THE WAY":
+            self.ge.focus_to('wild')
+        else:
             self.ge.move_to_city(truck.location)
-            self.ge.focus_to('city')
-    
+            self.ge.focus_to('city')    
 
 class CargoList(List):
     
