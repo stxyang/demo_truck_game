@@ -138,6 +138,7 @@ class CargoList(List):
         if self.truck is not None:
             self.items = sorted(self.items + self.truck.cargos, key=lambda c:(c.dest, c.name, c.uid))
 
+	i = 0
         for i in range(len(self.items)):
             listitem = self.new_line(i*3, 2)
             listitem.box()
